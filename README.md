@@ -8,7 +8,11 @@
 
 This git repo provides a complete environment for demonstrating how to configure Alluxio's caching file system capability for use with SparkSQL and Trino as the query engines and Hive as the metastore.
 
-This repo deploys Trino, Alluxio, Hive metastore, Spark and Minio. It configures a Trino Hive catalog to use the Alluxio caching engine. See: 
+This repo deploys Trino, Alluxio, Hive metastore, Spark and Minio. It configures a Trino Hive catalog to use the Alluxio caching engine. For the Community Edition of Alluxio, see: 
+
+    https://docs.alluxio.io/os/user/stable/en/Overview.html
+
+For the Enterprise Edition of Alluxio, see:
 
     https://docs.alluxio.io/ee-da/user/stable/en/Overview.html
 
@@ -37,51 +41,33 @@ Launch the containers defined in the docker-compose.yml file using the command:
 The command will create the network object and the docker volumes, then it will take some time to pull the various docker images. When it is complete, you see this output:
 
     $ docker-compose up -d
-    Creating network "trino-minio_trino-network" with driver "bridge"
-    Creating volume "trino-minio_minio-data" with local driver
-    Creating volume "trino-minio_alluxio-data" with local driver
+    Creating network "alluxio-spark-trino-minio_custom"
+    Creating volume "alluxio-spark-trino-minio_trino-data" with local driver
+    Creating volume "alluxio-spark-trino-minio_alluxio-data" with local driver
+    Creating volume "alluxio-spark-trino-minio_minio-data" with local driver
+    Creating volume "alluxio-spark-trino-minio_hive-metastore-data" with local driver
+    Creating alluxio-master       ... done
+    Creating alluxio-worker1      ... done
     Creating trino-coordinator    ... done
     Creating spark-master         ... done
-    Creating minio             ... done
-    Creating mariadb              ... done
     Creating spark-worker         ... done
+    Creating minio                ... done
     Creating minio-create-buckets ... done
-    Creating alluxio-master       ... done
     Creating alluxio-mount-minio-bucket ... done
-    Creating alluxio-worker1            ... done
     Creating hive-metastore             ... done
 
 ### Step 4. View the buckets in Minio
 
 Use the Minio web console to view the pre-staged bucket in Minio. Follow these steps:
 
-     - Point your web browser to http://localhost:9001
+- Point your web browser to http://localhost:9001
+- Log in using the user id "minio" and the password "minio123"
+- Click on the "Object Browser" link from the left margin menu.
+- Click on the bucket link named "minio-bucket-1" and view the folder named "user" in the bucket
+- Click on the folder named "user" view the folder named "hive"
+- Click on the folder named hive and view the folder named "warehouse"
 
-     - Log in using the user id "minio" and the password "minio123"
-
-     - Click on the "Object Browser" link from the left margin menu.
-
-     - Click on the bucket link named "minio-bucket-1" and view the folder named "user" in the bucket
-
-     - Click on the folder named "user" view the folder named "hive"
-
-     - Click on the folder named hive and view the folder named "warehouse"
-
-### Step 5. View the mounted Minio bucket in Alluxio
-
-Use the Alluxio web console to view the pre-staged mount of the Minio "hive" bucket in Alluxio. Follow these steps:
-
-     - Point your web browser to http://localhost:19999
-
-     - Click on the "MountTable" tab at the top of the page
-
-     - View the "/user" mount point for the "s3a://minio-bucket-1/user" Minio bucket
-
-     - Now, click on the "Browse" tab at the top of the page
-
-     - Click on the "user" directory name, then the "hive" directory name
-
-     - View the /user/hive/warehouse directory in the mounted bucket
+### Step 5. View the buckets in the Alluxio command line interface
 
 If you want to use the Alluxio command line to view the bucket mount, you can follow these steps:
 
@@ -103,20 +89,11 @@ Then, you can list the directory tree with the command:
 
     alluxio fs ls -R /
 
-Also, you can view the Alluxio audit log to see when Trino queries access the Alluxio virtual file system. Use this command:
+### Step 6. View the Alluxio Web console
 
-    tail -f /opt/alluxio/logs/master_audit.log
+Point your web browser to the Alluxio Web console to view the Alluxio masters, workers and cache information.
 
-### Step 6. (Optional) Enable debug mode on the Alluxio master
-
-Run the following command if you would like to enable debugging:
-
-    alluxio logLevel --logName=alluxio --target master --level=DEBUG
-
-Later, you can disable debugging mode with the command:
-
-    alluxio logLevel --logName=alluxio --level=INFO
-
+     http://localhost:19999
 
 ### Step 7. View the Trino Web console
 
@@ -126,7 +103,7 @@ Point your web browser to the Trino Web console to view query status and history
 
 The user id is "trino" and there is no password.
 
-### Step 9. Test Trino with the Alluxio virtual file system
+### Step 8. Test Trino with the Alluxio virtual file system
 
 When using Trino with Alluxio Community Edition, you can specify Alluxio as the storage location when you define the table.  With the Enterprise Edition of Alluxio, you can use the Transparent URI feature which will automatically redirect references to s3 and s3a URIs to the native Alluxio URI (alluxio://).  But with this Community Edition of Alluxio, you must specify the alluxio:// URI within the table LOCATION specification.
 
@@ -155,7 +132,7 @@ Then create a new table and copy data from an existing Trino schema and table us
              WHERE acctbal > 3500.00 AND acctbal < 9000.00 
              ORDER BY acctbal LIMIT 25;
  
-### Step 10. View the Alluxio cache storage usage
+### Step 9. View the Alluxio cache storage usage
 
 When Trino queries data using Alluxio's virtual file system, Alluxio will cache data to cache storage when it is first read from the under file system (in this case, Minio).
 
@@ -188,7 +165,7 @@ This will show that some worker node cache storage is being used:
             Tier: MEM  Size: 78.71KB
         Free Capacity: 1023.92MB
 
-### Step 11. Test Spark with the Alluxio virtual file system
+### Step 10. Test Spark with the Alluxio virtual file system
 
 The Alluxio virtual file system will handle read/write operations from Spark jobs when they reference the alluxio:// filesystem scheme. If Spark is using the Hive Metastore, the Hive table definitions with the "external_location=alluxio://<directory_name>/" will be directed to Alluxio and Alluxio will read from its cache, if the file is already cached, or it will read from the under file system or UFS (Minio in this casE).
 
@@ -237,7 +214,7 @@ To view the data files created by the Spark df.write.saveAsTable() operation, go
 
 And click on the "Browse" tab at the top, then click on the "hive" folder and then the "warehouse" folder. The "test_table" folder will show the parquet files created for the new table in the my_spark_table directory. Notice that Alluxio is reporting that 100% of the data has been cached. That is because Alluxio has been configured to cache on write as well as cache on read.
 
-### Step 12. Destroy the containers
+### Step 11. Destroy the containers
 
 If you want to destroy the containers but maintain the persistent volumes (and the Hive tables and Minio buckets), you can use the command:
 
