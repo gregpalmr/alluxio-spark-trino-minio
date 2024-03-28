@@ -1,0 +1,15 @@
+<configuration>
+
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://hive-metastore:9083</value> 
+    <description>URI for client to contact metastore server</description>
+  </property>
+
+  <property>
+    <name>hfs.alluxio.impl</name>
+    <value>alluxio.hadoop.FileSystem</value>
+    <description>Configure Spark to know about the alluxio:// file system scheme</description>
+  </property>
+
+</configuration>
